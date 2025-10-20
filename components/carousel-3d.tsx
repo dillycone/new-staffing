@@ -157,20 +157,8 @@ export default function Carousel3D() {
   );
 
   return (
-    <div className="w-full max-w-5xl mx-auto px-6 sm:px-10 lg:px-12 py-12">
-      <div className="mb-12 text-center space-y-4">
-        <span className="inline-flex items-center justify-center rounded-full border border-border/60 bg-[hsl(var(--surface-strong))] px-4 py-1 text-xs font-semibold uppercase tracking-[0.32em] text-muted-foreground/80">
-          Workflow Overview
-        </span>
-        <h2 className="text-3xl sm:text-4xl font-semibold tracking-tight text-foreground">
-          Staffing Workflow
-        </h2>
-        <p className="mx-auto max-w-2xl text-base sm:text-lg text-muted-foreground">
-          Lead recruiters and hiring managers through a clear, three-step flow that keeps resume intake and scoring aligned with every search.
-        </p>
-      </div>
-
-      <div className="relative mt-12 sm:mt-16 h-[460px] sm:h-[530px] flex items-center justify-center">
+    <div className="w-full max-w-5xl mx-auto px-6 sm:px-10 lg:px-12 pt-0 pb-8">
+      <div className="relative h-[480px] sm:h-[520px] flex items-center justify-center">
         <div
           className="relative w-full h-full"
           style={{
@@ -214,7 +202,7 @@ export default function Carousel3D() {
                 >
                   <Card
                     className={cn(
-                      "h-full max-h-[354px] overflow-hidden border border-border/40 bg-white/90 backdrop-blur",
+                      "h-[380px] flex flex-col overflow-hidden border border-border/40 bg-white/90 backdrop-blur",
                       effects.isFront ? "shadow-lifted" : "shadow-soft"
                     )}
                     style={{
@@ -224,7 +212,7 @@ export default function Carousel3D() {
                   >
                     <CardHeader
                       className={cn(
-                        "relative overflow-hidden rounded-t-2xl border-b border-border/30 px-6 py-5",
+                        "relative overflow-hidden rounded-t-2xl border-b border-border/30 px-5 py-4",
                         effects.isFront
                           ? `bg-gradient-to-br ${step.gradientFrom} ${step.gradientTo}`
                           : "bg-[hsl(var(--surface-strong))]"
@@ -262,7 +250,7 @@ export default function Carousel3D() {
                         </div>
                       </div>
                     </CardHeader>
-                    <CardContent className="flex h-full flex-col justify-between gap-4 px-6 pb-6 pt-4">
+                    <CardContent className="flex flex-col gap-4 px-5 pb-5 pt-3">
                       <div className="space-y-3">
                         {step.highlights.map((highlight) => (
                           <div key={highlight} className="flex items-center gap-3 text-sm text-muted-foreground">
@@ -272,20 +260,10 @@ export default function Carousel3D() {
                         ))}
                       </div>
                       {effects.isFront && (
-                        <div className="flex flex-wrap items-center justify-center gap-3 pt-2 text-center">
+                        <div className="flex flex-wrap items-center justify-center gap-3 pt-4 text-center">
                           <Button asChild size="lg" className="justify-center px-8">
                             <a href={step.primaryAction.href}>{step.primaryAction.label}</a>
                           </Button>
-                          {step.secondaryAction?.label && (
-                            <Button
-                              asChild
-                              variant="outline"
-                              size="lg"
-                              className="justify-center px-8"
-                            >
-                              <a href={step.secondaryAction.href}>{step.secondaryAction.label}</a>
-                            </Button>
-                          )}
                         </div>
                       )}
                     </CardContent>
@@ -314,7 +292,7 @@ export default function Carousel3D() {
         </Button>
       </div>
 
-      <div className="mt-10 flex justify-center gap-3">
+      <div className="mt-6 flex justify-center gap-3">
         {workflowSteps.map((step, index) => (
           <button
             key={step.id}
