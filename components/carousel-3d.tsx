@@ -1,9 +1,15 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { FolderUp, ClipboardList, PlusCircle, ArrowLeft, ArrowRight } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { ArrowLeft, ArrowRight, ClipboardList, FolderUp, PlusCircle } from "lucide-react";
+
+interface WorkflowAction {
+  label: string;
+  href?: string;
+}
 
 interface WorkflowStep {
   id: number;
@@ -13,61 +19,102 @@ interface WorkflowStep {
   iconColor: string;
   gradientFrom: string;
   gradientTo: string;
-  rotation: number; // degrees for 3D positioning
+  rotation: number;
+  highlights: string[];
+  primaryAction: WorkflowAction;
+  secondaryAction?: WorkflowAction;
 }
 
 const workflowSteps: WorkflowStep[] = [
   {
     id: 1,
-    title: "Upload Resumes/Select Folder",
-    description: "Browse and select resume files or folders for processing",
+    title: "Upload Resumes",
+    description: "Drag and drop folders or connect cloud drives in seconds.",
     icon: FolderUp,
     iconColor: "text-blue-600",
     gradientFrom: "from-blue-50",
     gradientTo: "to-blue-100",
-    rotation: 0, // front
+    rotation: 0,
+    highlights: [
+      "Bulk upload with automatic file parsing",
+      "Organize resumes into reusable collections",
+      "Keep source documents synced across updates",
+    ],
+    primaryAction: { label: "Upload resumes", href: "#" },
+    secondaryAction: { label: "View upload tips", href: "#" },
   },
   {
     id: 2,
     title: "Select Scoring Profile",
-    description: "Choose from existing scoring profiles to evaluate candidates",
+    description: "Apply proven scoring profiles aligned to each role.",
     icon: ClipboardList,
     iconColor: "text-green-600",
-    gradientFrom: "from-green-50",
-    gradientTo: "to-green-100",
-    rotation: 120, // 120° clockwise
+    gradientFrom: "from-emerald-50",
+    gradientTo: "to-emerald-100",
+    rotation: 120,
+    highlights: [
+      "Match roles to ready-made profile templates",
+      "Blend skill, experience, and culture fit weights",
+      "Visualize scoring criteria before evaluation",
+    ],
+    primaryAction: { label: "Choose a profile", href: "#" },
+    secondaryAction: { label: "Manage profiles", href: "#" },
   },
   {
     id: 3,
     title: "Create Scoring Profile",
-    description: "Define custom criteria and weights for candidate evaluation",
+    description: "Design custom criteria tailored to hiring priorities.",
     icon: PlusCircle,
     iconColor: "text-purple-600",
     gradientFrom: "from-purple-50",
     gradientTo: "to-purple-100",
-    rotation: 240, // 240° clockwise
+    rotation: 240,
+    highlights: [
+      "Combine hard and soft-skill scorecards",
+      "Preview outcomes against recent candidates",
+      "Share profiles across your hiring team",
+    ],
+    primaryAction: { label: "Create new profile", href: "#" },
+    secondaryAction: { label: "Explore templates", href: "#" },
   },
 ];
 
 export default function Carousel3D() {
-  // State management for rotation
-  const [currentRotation, setCurrentRotation] = useState(0);
+  const totalSteps = workflowSteps.length;
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [isMobile, setIsMobile] = useState(false);
 
-  // Navigation functions
-  const handleNext = () => {
-    setCurrentRotation((prev) => prev + 120);
-  };
+  const handleNext = useCallback(() => {
+    setActiveIndex((prev) => (prev + 1) % totalSteps);
+  }, [totalSteps]);
 
-  const handlePrevious = () => {
-    setCurrentRotation((prev) => prev - 120);
-  };
+  const handlePrevious = useCallback(() => {
+    setActiveIndex((prev) => (prev - 1 + totalSteps) % totalSteps);
+  }, [totalSteps]);
 
-  // Keyboard navigation
+  const handleDotClick = useCallback((index: number) => {
+    setActiveIndex(index);
+  }, []);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.matchMedia("(max-width: 640px)").matches);
+    };
+
+    handleResize();
+    window.addEventListener("resize", handleResize);
+
+    return () => {
+      window.removeEventListener("resize", handleResize);
+    };
+  }, []);
+
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "ArrowLeft") {
         handlePrevious();
-      } else if (event.key === "ArrowRight") {
+      }
+      if (event.key === "ArrowRight") {
         handleNext();
       }
     };
@@ -76,99 +123,77 @@ export default function Carousel3D() {
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, []);
+  }, [handleNext, handlePrevious]);
 
-  // Calculate active step based on rotation
-  const normalizedRotation = ((currentRotation % 360) + 360) % 360;
-  const activeStepIndex = Math.round(normalizedRotation / 120) % 3;
+  const currentRotation = useMemo(() => activeIndex * 120, [activeIndex]);
+  const translateZ = isMobile ? 335 : 484;
+  const transitionDuration = isMobile ? 0.6 : 0.85;
 
-  // Calculate visual effects for each card based on its angle relative to viewer
-  const getCardVisualEffects = (cardRotation: number) => {
-    // Normalize the angle difference to [-180, 180]
-    let angleDiff = ((cardRotation - currentRotation) % 360 + 360) % 360;
-    if (angleDiff > 180) angleDiff -= 360;
+  const getCardVisualEffects = useCallback(
+    (cardRotation: number) => {
+      let angleDiff = ((cardRotation - currentRotation) % 360 + 360) % 360;
+      if (angleDiff > 180) angleDiff -= 360;
 
-    // Calculate distance from front (0 = front, 180 = back)
-    const distanceFromFront = Math.abs(angleDiff);
+      const distanceFromFront = Math.abs(angleDiff);
 
-    // Opacity: Full at front, reduced on sides
-    const opacity = distanceFromFront < 90
-      ? 1.0 - (distanceFromFront / 90) * 0.3  // Front hemisphere: 1.0 to 0.7
-      : 0.5;  // Back hemisphere: dimmer
+      const opacity = distanceFromFront < 90 ? 1 - (distanceFromFront / 90) * 0.35 : 0.4;
+      const scale = distanceFromFront < 60 ? 1.04 - (distanceFromFront / 60) * 0.06 : 0.98;
+      const brightness = distanceFromFront < 90 ? 100 + (1 - distanceFromFront / 90) * 8 : 92;
+      const shadowIntensity = distanceFromFront < 90 ? 1 - (distanceFromFront / 90) * 0.6 : 0.25;
 
-    // Scale: Larger at front, normal on sides
-    const scale = distanceFromFront < 60
-      ? 1.05 - (distanceFromFront / 60) * 0.05  // 1.05 at front to 1.0
-      : 1.0;
+      const boxShadow = `0 ${22 * shadowIntensity}px ${48 * shadowIntensity}px rgba(15, 23, 42, ${0.22 * shadowIntensity})`;
+      const zIndex = Math.round(120 - distanceFromFront);
 
-    // Brightness filter for lighting effect
-    const brightness = distanceFromFront < 90
-      ? 100 + (1 - distanceFromFront / 90) * 10  // 110% at front to 100%
-      : 90;  // 90% at back
-
-    // Shadow: Stronger at front, lighter on sides
-    const shadowIntensity = distanceFromFront < 90
-      ? 1 - (distanceFromFront / 90) * 0.6  // 1.0 at front to 0.4
-      : 0.2;  // Very light at back
-
-    const boxShadow = `
-      0 ${20 * shadowIntensity}px ${40 * shadowIntensity}px rgba(0, 0, 0, ${0.15 * shadowIntensity}),
-      0 ${10 * shadowIntensity}px ${20 * shadowIntensity}px rgba(0, 0, 0, ${0.1 * shadowIntensity}),
-      0 0 ${60 * shadowIntensity}px rgba(0, 0, 0, ${0.05 * shadowIntensity})
-    `;
-
-    // Z-index: Front card on top
-    const zIndex = Math.round(100 - distanceFromFront);
-
-    return {
-      opacity,
-      scale,
-      brightness,
-      boxShadow,
-      zIndex,
-      isFront: distanceFromFront < 30,
-    };
-  };
+      return {
+        opacity,
+        scale,
+        brightness,
+        boxShadow,
+        zIndex,
+        isFront: distanceFromFront < 25,
+      };
+    },
+    [currentRotation]
+  );
 
   return (
-    <div className="w-full max-w-5xl mx-auto px-4 sm:px-8 lg:px-12 py-8">
-      <div className="mb-8 text-center">
-        <h2 className="text-3xl font-bold tracking-tight mb-2">
+    <div className="w-full max-w-5xl mx-auto px-6 sm:px-10 lg:px-12 py-12">
+      <div className="mb-12 text-center space-y-4">
+        <span className="inline-flex items-center justify-center rounded-full border border-border/60 bg-[hsl(var(--surface-strong))] px-4 py-1 text-xs font-semibold uppercase tracking-[0.32em] text-muted-foreground/80">
+          Workflow Overview
+        </span>
+        <h2 className="text-3xl sm:text-4xl font-semibold tracking-tight text-foreground">
           Staffing Workflow
         </h2>
-        <p className="text-muted-foreground">
-          Follow these steps to streamline your candidate evaluation process
+        <p className="mx-auto max-w-2xl text-base sm:text-lg text-muted-foreground">
+          Lead recruiters and hiring managers through a clear, three-step flow that keeps resume intake and scoring aligned with every search.
         </p>
       </div>
 
-      {/* 3D Carousel Container */}
-      <div className="relative h-[500px] sm:h-[600px] flex items-center justify-center">
-        {/* Perspective container */}
+      <div className="relative mt-12 sm:mt-16 h-[460px] sm:h-[530px] flex items-center justify-center">
         <div
           className="relative w-full h-full"
           style={{
-            perspective: "1200px",
+            perspective: "1100px",
             perspectiveOrigin: "center center",
           }}
         >
-          {/* Ground plane reflection effect */}
           <div
             className="absolute inset-0 pointer-events-none"
             style={{
-              background: "radial-gradient(ellipse at center bottom, rgba(0,0,0,0.05) 0%, transparent 60%)",
+              background: "radial-gradient(ellipse at center bottom, rgba(15,23,42,0.08) 0%, transparent 65%)",
             }}
           />
 
-          {/* 3D rotating stage */}
           <div
             className="relative w-full h-full"
             style={{
               transformStyle: "preserve-3d",
               transform: `rotateY(${-currentRotation}deg)`,
-              transition: "transform 0.8s ease-in-out",
+              transition: `transform ${transitionDuration}s cubic-bezier(0.22, 1, 0.36, 1)`,
+              willChange: "transform",
             }}
           >
-            {/* Cards positioned in 3D circle */}
             {workflowSteps.map((step) => {
               const Icon = step.icon;
               const effects = getCardVisualEffects(step.rotation);
@@ -176,78 +201,93 @@ export default function Carousel3D() {
               return (
                 <div
                   key={step.id}
-                  className="absolute top-1/2 left-1/2 w-full max-w-[400px] sm:max-w-[420px]"
+                  className="absolute top-1/2 left-1/2 w-full max-w-[336px] sm:max-w-[372px]"
                   style={{
-                    transform: `translate(-50%, -50%) rotateY(${step.rotation}deg) translateZ(500px) scale(${effects.scale})`,
+                    transform: `translate(-50%, -50%) rotateY(${step.rotation}deg) translateZ(${translateZ}px) scale(${effects.scale})`,
                     transformStyle: "preserve-3d",
                     opacity: effects.opacity,
                     filter: `brightness(${effects.brightness}%)`,
-                    transition: "all 0.8s ease-in-out",
+                    transition: `all ${transitionDuration}s cubic-bezier(0.22, 1, 0.36, 1)`,
                     zIndex: effects.zIndex,
+                    pointerEvents: effects.isFront ? "auto" : "none",
                   }}
                 >
                   <Card
-                    className="h-full max-h-[380px] border-2 backdrop-blur-sm overflow-hidden"
+                    className={cn(
+                      "h-full max-h-[354px] overflow-hidden border border-border/40 bg-white/90 backdrop-blur",
+                      effects.isFront ? "shadow-lifted" : "shadow-soft"
+                    )}
                     style={{
                       boxShadow: effects.boxShadow,
-                      transition: "box-shadow 0.8s ease-in-out",
-                      backgroundColor: effects.isFront ? "rgba(255, 255, 255, 1)" : "rgba(255, 255, 255, 0.98)",
+                      backfaceVisibility: "hidden",
                     }}
                   >
-                    <CardHeader className={`bg-gradient-to-br ${step.gradientFrom} ${step.gradientTo} rounded-t-lg relative overflow-hidden p-5`}>
-                      {/* Subtle shine effect on front card */}
+                    <CardHeader
+                      className={cn(
+                        "relative overflow-hidden rounded-t-2xl border-b border-border/30 px-6 py-5",
+                        effects.isFront
+                          ? `bg-gradient-to-br ${step.gradientFrom} ${step.gradientTo}`
+                          : "bg-[hsl(var(--surface-strong))]"
+                      )}
+                    >
                       {effects.isFront && (
                         <div
-                          className="absolute inset-0 opacity-30 pointer-events-none"
+                          className="absolute inset-0 opacity-30"
                           style={{
-                            background: "linear-gradient(135deg, transparent 0%, rgba(255,255,255,0.3) 50%, transparent 100%)",
+                            background: "linear-gradient(135deg, rgba(255,255,255,0.65) 0%, rgba(255,255,255,0.15) 55%, transparent 100%)",
                           }}
                         />
                       )}
-                      <div className="flex items-start justify-between relative z-10">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-3">
-                            <div
-                              className="flex h-10 w-10 items-center justify-center rounded-full bg-white shadow-md"
-                              style={{
-                                boxShadow: effects.isFront
-                                  ? "0 4px 12px rgba(0,0,0,0.15)"
-                                  : "0 2px 6px rgba(0,0,0,0.1)",
-                                transition: "box-shadow 0.8s ease-in-out",
-                              }}
-                            >
-                              <Icon className={`h-5 w-5 ${step.iconColor}`} />
-                            </div>
-                            <div className="flex h-7 w-7 items-center justify-center rounded-full bg-white shadow-sm">
-                              <span className="text-xs font-bold text-gray-700">
-                                {step.id}
-                              </span>
-                            </div>
+                      <div className="relative z-10 flex items-start gap-3">
+                        <div
+                          className="flex h-12 w-12 items-center justify-center rounded-full bg-white shadow-soft"
+                          style={{
+                            boxShadow: effects.isFront
+                              ? "0 16px 30px rgba(15,23,42,0.15)"
+                              : "0 12px 20px rgba(15,23,42,0.12)",
+                          }}
+                        >
+                          <Icon className={cn("h-6 w-6", step.iconColor)} />
+                        </div>
+                        <div className="flex flex-1 flex-col gap-2">
+                          <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-[0.28em] text-muted-foreground/80">
+                            <span>Step {step.id}</span>
                           </div>
-                          <CardTitle className="text-2xl font-bold mb-3 leading-tight">
+                          <CardTitle className="text-[1.6rem] font-semibold leading-tight text-foreground">
                             {step.title}
                           </CardTitle>
-                          <CardDescription className="text-sm text-gray-600 leading-relaxed">
+                          <CardDescription className="text-sm sm:text-base text-slate-600">
                             {step.description}
                           </CardDescription>
                         </div>
                       </div>
                     </CardHeader>
-                    <CardContent className="p-4 pt-4">
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                          <div className="h-1.5 w-1.5 rounded-full bg-gray-400" />
-                          <span>Quick and intuitive setup</span>
-                        </div>
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                          <div className="h-1.5 w-1.5 rounded-full bg-gray-400" />
-                          <span>Seamless workflow integration</span>
-                        </div>
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                          <div className="h-1.5 w-1.5 rounded-full bg-gray-400" />
-                          <span>Optimized for efficiency</span>
-                        </div>
+                    <CardContent className="flex h-full flex-col justify-between gap-4 px-6 pb-6 pt-4">
+                      <div className="space-y-3">
+                        {step.highlights.map((highlight) => (
+                          <div key={highlight} className="flex items-center gap-3 text-sm text-muted-foreground">
+                            <span className="h-1.5 w-1.5 rounded-full bg-slate-400" />
+                            <span>{highlight}</span>
+                          </div>
+                        ))}
                       </div>
+                      {effects.isFront && (
+                        <div className="flex flex-wrap items-center justify-center gap-3 pt-2 text-center">
+                          <Button asChild size="lg" className="justify-center px-8">
+                            <a href={step.primaryAction.href}>{step.primaryAction.label}</a>
+                          </Button>
+                          {step.secondaryAction?.label && (
+                            <Button
+                              asChild
+                              variant="outline"
+                              size="lg"
+                              className="justify-center px-8"
+                            >
+                              <a href={step.secondaryAction.href}>{step.secondaryAction.label}</a>
+                            </Button>
+                          )}
+                        </div>
+                      )}
                     </CardContent>
                   </Card>
                 </div>
@@ -256,13 +296,11 @@ export default function Carousel3D() {
           </div>
         </div>
 
-        {/* Navigation buttons */}
         <Button
           variant="outline"
           size="icon"
           onClick={handlePrevious}
-          className="absolute left-0 top-1/2 -translate-y-1/2 h-12 w-12 rounded-full shadow-lg hover:shadow-xl transition-shadow z-10"
-          aria-label="Previous step"
+          className="absolute left-4 sm:left-10 top-1/2 -translate-y-1/2 h-12 w-12 rounded-full border-none bg-white/90 shadow-lifted hover:bg-white"
         >
           <ArrowLeft className="h-6 w-6" />
         </Button>
@@ -270,22 +308,22 @@ export default function Carousel3D() {
           variant="outline"
           size="icon"
           onClick={handleNext}
-          className="absolute right-0 top-1/2 -translate-y-1/2 h-12 w-12 rounded-full shadow-lg hover:shadow-xl transition-shadow z-10"
-          aria-label="Next step"
+          className="absolute right-4 sm:right-10 top-1/2 -translate-y-1/2 h-12 w-12 rounded-full border-none bg-white/90 shadow-lifted hover:bg-white"
         >
           <ArrowRight className="h-6 w-6" />
         </Button>
       </div>
 
-      {/* Step indicators with active highlighting */}
-      <div className="mt-6 flex justify-center gap-2">
+      <div className="mt-10 flex justify-center gap-3">
         {workflowSteps.map((step, index) => (
-          <div
+          <button
             key={step.id}
-            className={`h-2 w-2 rounded-full transition-colors ${
-              index === activeStepIndex ? "bg-blue-600" : "bg-gray-300"
-            }`}
-            aria-label={`Step ${step.id}`}
+            type="button"
+            onClick={() => handleDotClick(index)}
+            className={cn(
+              "h-2.5 rounded-full transition-all duration-300",
+              index === activeIndex ? "w-10 bg-primary" : "w-2.5 bg-muted-foreground/30 hover:bg-muted-foreground/50"
+            )}
           />
         ))}
       </div>

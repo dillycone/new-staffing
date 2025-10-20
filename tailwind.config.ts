@@ -16,6 +16,31 @@ const config: Config = {
       },
     },
     extend: {
+      fontFamily: {
+        sans: [
+          "var(--font-sans)",
+          "Inter",
+          "system-ui",
+          "-apple-system",
+          "BlinkMacSystemFont",
+          "Segoe UI",
+          "sans-serif",
+        ],
+        display: [
+          "var(--font-sans)",
+          "Inter",
+          "system-ui",
+          "-apple-system",
+          "BlinkMacSystemFont",
+          "Segoe UI",
+          "sans-serif",
+        ],
+      },
+      boxShadow: {
+        soft: "var(--shadow-sm)",
+        lifted: "var(--shadow-md)",
+        elevated: "var(--shadow-lg)",
+      },
       colors: {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
