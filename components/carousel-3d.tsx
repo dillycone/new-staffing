@@ -1,10 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState, type ComponentType } from "react";
+import { useRouter } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { ArrowLeft, ArrowRight, ClipboardList, FolderUp, PlusCircle } from "lucide-react";
+import { useWorkflow } from "@/contexts/workflow-context";
 
 interface WorkflowAction {
   label: string;
@@ -70,12 +72,14 @@ const workflowSteps: WorkflowStep[] = [
       "Preview outcomes against recent candidates",
       "Share profiles across your hiring team",
     ],
-    primaryAction: { label: "Create new profile", href: "#" },
+    primaryAction: { label: "Create new profile", href: "/profile/new" },
     secondaryAction: { label: "Explore templates", href: "#" },
   },
 ];
 
 export default function Carousel3D() {
+  const router = useRouter();
+  const { setUploadModalOpen, setProfileSelectorModalOpen } = useWorkflow();
   const totalSteps = workflowSteps.length;
   const [activeIndex, setActiveIndex] = useState(0);
   const [isMobile, setIsMobile] = useState(false);
@@ -266,7 +270,24 @@ export default function Carousel3D() {
                       </div>
                       {effects.isFront && (
                         <div className="flex flex-wrap items-center justify-center gap-3 pt-4 text-center">
-                          <Button size="lg" className="justify-center px-8" onClick={() => {/* TODO: implement action */}}>
+                          <Button
+                            size="lg"
+                            className="justify-center px-8"
+                            onClick={() => {
+                              // Step 1: Upload Resumes - Open upload modal
+                              if (step.id === 1) {
+                                setUploadModalOpen(true);
+                              }
+                              // Step 2: Select Profile - Open profile selector modal
+                              else if (step.id === 2) {
+                                setProfileSelectorModalOpen(true);
+                              }
+                              // Step 3: Create Profile - Navigate to profile builder page
+                              else if (step.primaryAction.href && step.primaryAction.href !== "#") {
+                                router.push(step.primaryAction.href);
+                              }
+                            }}
+                          >
                             {step.primaryAction.label}
                           </Button>
                         </div>
