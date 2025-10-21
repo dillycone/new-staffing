@@ -27,6 +27,7 @@ build/
 *.a
 *.so
 .next/
+*.tsbuildinfo
 
 # Logs
 *.log
