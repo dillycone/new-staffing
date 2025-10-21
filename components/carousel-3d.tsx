@@ -3,8 +3,11 @@
 import { useCallback, useEffect, useMemo, useState, type ComponentType } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { FileUpload } from "@/components/FileUpload";
 import { cn } from "@/lib/utils";
 import { ArrowLeft, ArrowRight, ClipboardList, FolderUp, PlusCircle } from "lucide-react";
+import type { ProcessedFile } from "@/lib/file-processor/types";
 
 interface WorkflowAction {
   label: string;
@@ -80,6 +83,9 @@ export default function Carousel3D() {
   const [activeIndex, setActiveIndex] = useState(0);
   const [isMobile, setIsMobile] = useState(false);
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
+  const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
+  const [uploadedFiles, setUploadedFiles] = useState<ProcessedFile[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
 
   const handleNext = useCallback(() => {
     setActiveIndex((prev) => (prev + 1) % totalSteps);
@@ -91,6 +97,45 @@ export default function Carousel3D() {
 
   const handleDotClick = useCallback((index: number) => {
     setActiveIndex(index);
+  }, []);
+
+  const handleFilesSelected = useCallback(async (files: File[]) => {
+    setIsUploading(true);
+    try {
+      const formData = new FormData();
+      files.forEach((file) => {
+        formData.append('files', file);
+      });
+
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error('Upload failed');
+      }
+
+      const data = await response.json();
+      setUploadedFiles(data.files);
+
+      // Show success message (you can add a toast notification here)
+      console.log('Files uploaded successfully:', data.files);
+
+      // Close dialog after successful upload
+      setTimeout(() => {
+        setUploadDialogOpen(false);
+      }, 1000);
+    } catch (error) {
+      console.error('Upload error:', error);
+      // Show error message (you can add a toast notification here)
+    } finally {
+      setIsUploading(false);
+    }
+  }, []);
+
+  const handleUploadClick = useCallback(() => {
+    setUploadDialogOpen(true);
   }, []);
 
   useEffect(() => {
@@ -266,7 +311,11 @@ export default function Carousel3D() {
                       </div>
                       {effects.isFront && (
                         <div className="flex flex-wrap items-center justify-center gap-3 pt-4 text-center">
-                          <Button size="lg" className="justify-center px-8" onClick={() => {/* TODO: implement action */}}>
+                          <Button
+                            size="lg"
+                            className="justify-center px-8"
+                            onClick={step.id === 1 ? handleUploadClick : () => {/* TODO: implement action */}}
+                          >
                             {step.primaryAction.label}
                           </Button>
                         </div>
@@ -319,6 +368,37 @@ export default function Carousel3D() {
       <p className="sr-only" aria-live="polite">
         Slide {activeIndex + 1} of {totalSteps}: {workflowSteps[activeIndex].title}
       </p>
+
+      {/* Upload Dialog */}
+      <Dialog open={uploadDialogOpen} onOpenChange={setUploadDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Upload Resumes</DialogTitle>
+            <DialogDescription>
+              Upload PDF, DOCX, TXT, or MD files. We&apos;ll extract the text content automatically.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="mt-4">
+            <FileUpload
+              onFilesSelected={handleFilesSelected}
+              maxFiles={20}
+              maxSize={10 * 1024 * 1024} // 10MB
+            />
+          </div>
+          {isUploading && (
+            <div className="mt-4 text-center text-sm text-muted-foreground">
+              Processing files...
+            </div>
+          )}
+          {uploadedFiles.length > 0 && !isUploading && (
+            <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-lg">
+              <p className="text-sm text-green-800 font-medium">
+                ✓ Successfully processed {uploadedFiles.length} file{uploadedFiles.length > 1 ? 's' : ''}
+              </p>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
