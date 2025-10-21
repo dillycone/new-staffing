@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type ComponentType } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -15,11 +15,10 @@ interface WorkflowStep {
   id: number;
   title: string;
   description: string;
-  icon: React.ComponentType<{ className?: string }>;
+  icon: ComponentType<{ className?: string }>;
   iconColor: string;
   gradientFrom: string;
   gradientTo: string;
-  rotation: number;
   highlights: string[];
   primaryAction: WorkflowAction;
   secondaryAction?: WorkflowAction;
@@ -34,7 +33,6 @@ const workflowSteps: WorkflowStep[] = [
     iconColor: "text-blue-600",
     gradientFrom: "from-blue-50",
     gradientTo: "to-blue-100",
-    rotation: 0,
     highlights: [
       "Bulk upload with automatic file parsing",
       "Organize resumes into reusable collections",
@@ -51,7 +49,6 @@ const workflowSteps: WorkflowStep[] = [
     iconColor: "text-green-600",
     gradientFrom: "from-emerald-50",
     gradientTo: "to-emerald-100",
-    rotation: 120,
     highlights: [
       "Match roles to ready-made profile templates",
       "Blend skill, experience, and culture fit weights",
@@ -68,7 +65,6 @@ const workflowSteps: WorkflowStep[] = [
     iconColor: "text-purple-600",
     gradientFrom: "from-purple-50",
     gradientTo: "to-purple-100",
-    rotation: 240,
     highlights: [
       "Combine hard and soft-skill scorecards",
       "Preview outcomes against recent candidates",
@@ -83,6 +79,7 @@ export default function Carousel3D() {
   const totalSteps = workflowSteps.length;
   const [activeIndex, setActiveIndex] = useState(0);
   const [isMobile, setIsMobile] = useState(false);
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
 
   const handleNext = useCallback(() => {
     setActiveIndex((prev) => (prev + 1) % totalSteps);
@@ -101,33 +98,27 @@ export default function Carousel3D() {
       setIsMobile(window.matchMedia("(max-width: 640px)").matches);
     };
 
+    const handleMotionPreference = () => {
+      setPrefersReducedMotion(window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+    };
+
     handleResize();
+    handleMotionPreference();
     window.addEventListener("resize", handleResize);
+
+    const motionMediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+    motionMediaQuery.addEventListener("change", handleMotionPreference);
 
     return () => {
       window.removeEventListener("resize", handleResize);
+      motionMediaQuery.removeEventListener("change", handleMotionPreference);
     };
   }, []);
 
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "ArrowLeft") {
-        handlePrevious();
-      }
-      if (event.key === "ArrowRight") {
-        handleNext();
-      }
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => {
-      window.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [handleNext, handlePrevious]);
-
-  const currentRotation = useMemo(() => activeIndex * 120, [activeIndex]);
+  const anglePer = 360 / totalSteps;
+  const currentRotation = useMemo(() => activeIndex * anglePer, [activeIndex, anglePer]);
   const translateZ = isMobile ? 335 : 484;
-  const transitionDuration = isMobile ? 0.6 : 0.85;
+  const transitionDuration = prefersReducedMotion ? 0 : (isMobile ? 0.6 : 0.85);
 
   const getCardVisualEffects = useCallback(
     (cardRotation: number) => {
@@ -142,7 +133,7 @@ export default function Carousel3D() {
       const shadowIntensity = distanceFromFront < 90 ? 1 - (distanceFromFront / 90) * 0.6 : 0.25;
 
       const boxShadow = `0 ${22 * shadowIntensity}px ${48 * shadowIntensity}px rgba(15, 23, 42, ${0.22 * shadowIntensity})`;
-      const zIndex = Math.round(120 - distanceFromFront);
+      const zIndex = Math.max(0, Math.round(120 - distanceFromFront));
 
       return {
         opacity,
@@ -158,7 +149,17 @@ export default function Carousel3D() {
 
   return (
     <div className="w-full max-w-5xl mx-auto px-6 sm:px-10 lg:px-12 pt-0 pb-8">
-      <div className="relative h-[480px] sm:h-[520px] flex items-center justify-center">
+      <div
+        className="relative h-[480px] sm:h-[520px] flex items-center justify-center"
+        role="region"
+        aria-roledescription="carousel"
+        aria-label="Staffing workflow steps"
+        tabIndex={0}
+        onKeyDown={(e) => {
+          if (e.key === "ArrowLeft") handlePrevious();
+          if (e.key === "ArrowRight") handleNext();
+        }}
+      >
         <div
           className="relative w-full h-full"
           style={{
@@ -182,23 +183,27 @@ export default function Carousel3D() {
               willChange: "transform",
             }}
           >
-            {workflowSteps.map((step) => {
+            {workflowSteps.map((step, i) => {
               const Icon = step.icon;
-              const effects = getCardVisualEffects(step.rotation);
+              const rotation = i * anglePer;
+              const effects = getCardVisualEffects(rotation);
 
               return (
                 <div
                   key={step.id}
                   className="absolute top-1/2 left-1/2 w-full max-w-[336px] sm:max-w-[372px]"
                   style={{
-                    transform: `translate(-50%, -50%) rotateY(${step.rotation}deg) translateZ(${translateZ}px) scale(${effects.scale})`,
+                    transform: `translate(-50%, -50%) rotateY(${rotation}deg) translateZ(${translateZ}px) scale(${effects.scale})`,
                     transformStyle: "preserve-3d",
                     opacity: effects.opacity,
                     filter: `brightness(${effects.brightness}%)`,
-                    transition: `all ${transitionDuration}s cubic-bezier(0.22, 1, 0.36, 1)`,
+                    transitionProperty: "transform, opacity, filter",
+                    transitionTimingFunction: "cubic-bezier(0.22, 1, 0.36, 1)",
+                    transitionDuration: `${transitionDuration}s`,
                     zIndex: effects.zIndex,
                     pointerEvents: effects.isFront ? "auto" : "none",
                   }}
+                  aria-hidden={!effects.isFront}
                 >
                   <Card
                     className={cn(
@@ -261,8 +266,8 @@ export default function Carousel3D() {
                       </div>
                       {effects.isFront && (
                         <div className="flex flex-wrap items-center justify-center gap-3 pt-4 text-center">
-                          <Button asChild size="lg" className="justify-center px-8">
-                            <a href={step.primaryAction.href}>{step.primaryAction.label}</a>
+                          <Button size="lg" className="justify-center px-8" onClick={() => {/* TODO: implement action */}}>
+                            {step.primaryAction.label}
                           </Button>
                         </div>
                       )}
@@ -281,6 +286,7 @@ export default function Carousel3D() {
           className="absolute left-4 sm:left-10 top-1/2 -translate-y-1/2 h-12 w-12 rounded-full border-none bg-white/90 shadow-lifted hover:bg-white"
         >
           <ArrowLeft className="h-6 w-6" />
+          <span className="sr-only">Previous slide</span>
         </Button>
         <Button
           variant="outline"
@@ -289,10 +295,11 @@ export default function Carousel3D() {
           className="absolute right-4 sm:right-10 top-1/2 -translate-y-1/2 h-12 w-12 rounded-full border-none bg-white/90 shadow-lifted hover:bg-white"
         >
           <ArrowRight className="h-6 w-6" />
+          <span className="sr-only">Next slide</span>
         </Button>
       </div>
 
-      <div className="mt-6 flex justify-center gap-3">
+      <div className="mt-6 flex justify-center gap-3" role="tablist" aria-label="Carousel pagination">
         {workflowSteps.map((step, index) => (
           <button
             key={step.id}
@@ -302,9 +309,16 @@ export default function Carousel3D() {
               "h-2.5 rounded-full transition-all duration-300",
               index === activeIndex ? "w-10 bg-primary" : "w-2.5 bg-muted-foreground/30 hover:bg-muted-foreground/50"
             )}
+            role="tab"
+            aria-selected={index === activeIndex}
+            aria-current={index === activeIndex ? "true" : undefined}
+            aria-label={`Go to slide ${index + 1}: ${step.title}`}
           />
         ))}
       </div>
+      <p className="sr-only" aria-live="polite">
+        Slide {activeIndex + 1} of {totalSteps}: {workflowSteps[activeIndex].title}
+      </p>
     </div>
   );
 }

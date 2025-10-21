@@ -11,6 +11,16 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "Staffing Workflow",
   description: "Resume scoring and profile management workflow",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
+    { media: "(prefers-color-scheme: dark)", color: "#0b1220" },
+  ],
+  openGraph: {
+    title: "Staffing Workflow",
+    description: "Resume scoring and profile management workflow",
+    type: "website",
+    url: "/",
+  },
 };
 
 export default function RootLayout({
