@@ -27,8 +27,8 @@ interface WorkflowStep {
 const workflowSteps: WorkflowStep[] = [
   {
     id: 1,
-    title: "Upload Resumes",
-    description: "Drag and drop folders or connect cloud drives in seconds.",
+    title: "Upload & Score Resumes",
+    description: "Drag & drop resumes or folders and select scoring profile",
     icon: FolderUp,
     iconColor: "text-blue-600",
     gradientFrom: "from-blue-50",
